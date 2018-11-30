@@ -12,8 +12,8 @@ class Vec2 private (private var _x: Double, private var _y: Double) {
   def -(other: Vec2): Vec2 = new Vec2(_x - other._x, _y - other._y)
 
   def distance(other: Vec2): Double = math.sqrt(math.pow(_x - other._x, 2) + math.pow(_y - other._y, 2))
-  
-  override def toString():String = "Vec2 (" + x + ", " + y + ")"
+
+  override def toString(): String = "Vec2 (" + x + ", " + y + ")"
 }
 
 object Vec2 {

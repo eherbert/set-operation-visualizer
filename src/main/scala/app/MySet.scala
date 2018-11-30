@@ -1,78 +1,81 @@
 package app
 
-import scalafx.scene.canvas.GraphicsContext
+import scalafx.Includes._
+import javafx.event.ActionEvent
+import scalafx.scene.shape.Shape
+import scalafx.scene.shape.Circle
 import scalafx.scene.paint.Color
+import javafx.scene.input.MouseEvent
 import scala.collection.mutable.Buffer
+import scalafx.geometry.Point2D
+import scalafx.beans.value.ObservableValue
+import scalafx.beans.property.ObjectProperty
 
-class MySet private (
-  val name: String,
-  val loc: Vec2,
-  val radius: Double) {
+class MySet private (val shape: Circle) {
+  private var prevMouseLoc = Vec2()
 
-  var strokeColor = Color.BLACK
-  var fillColor = Color.BLACK
+  def selected() { shape.stroke = Color.Green }
+  def unselected() { shape.stroke = Color.Black }
 
-  private def cloc(): Vec2 = Vec2(loc.x() + radius, loc.y() + radius)
-
-  def surrounds(other: Vec2): Boolean = cloc.distance(other) < radius
-
-  // finds closest uninterrupted circle segment to selected point, returns points along that segment
-  def surroundingPoints(others: Buffer[MySet]): Buffer[Vec2] = {
-    def findNextBorderSegment(points: Buffer[Vec2]): (Buffer[Vec2], Buffer[Vec2]) = {
-      val containers = others.filter(_.surrounds(points(0)))
-      val segment = points.filter(p => others.filter(_.surrounds(p)) == containers)
-      val remaining = points -- segment
-      (segment, remaining)
-    }
-
-    var points = (0.0 until 2.0 by 0.01).toSeq.map(a => {
-      val t = a * math.Pi
-      val v = Vec2(math.cos(t) * radius + loc.x(), math.sin(t) * radius + loc.y())
-      println(v)
-      v
-    }).toBuffer
-    val segments = Buffer[Buffer[Vec2]]()
-    while (!points.isEmpty) {
-      val (s, r) = findNextBorderSegment(points)
-      segments += s
-      points = r
-    }
-    
-    println(segments.length)
-    
-    /*
-    segments.foldLeft(segments(0))(s => {
-      val avg = (s.map(_._1).sum / s.length, s.map(_._2).sum / s.length)
-    })
-    * 
-    */
-
-    Buffer[Vec2]()
+  shape.onMousePressed = (e: MouseEvent) => {
+    prevMouseLoc = Vec2(e.x, e.y)
+    selected()
+    MySet.unselected()
   }
 
-  def selected() {
-    strokeColor = Color.GREEN
-    fillColor = Color.GREEN
+  shape.onMouseDragged = (e: MouseEvent) => {
+    shape.centerX = shape.centerX() + (e.x - prevMouseLoc.x())
+    shape.centerY = shape.centerY() + (e.y - prevMouseLoc.y())
+    prevMouseLoc = Vec2(e.x, e.y)
   }
 
-  def deselected() {
-    strokeColor = Color.BLACK
-    fillColor = Color.BLACK
+  shape.onMouseReleased = (e: MouseEvent) => {
+    unselected()
+    MySet.unselected()
   }
 
-  def render(gc: GraphicsContext) {
-    gc.stroke = strokeColor
-    gc.strokeOval(loc.x(), loc.y(), radius * 2, radius * 2)
-    gc.fill = fillColor
-    gc.fillText(name, loc.x(), loc.y())
+  shape.onMouseClicked = (e: MouseEvent) => {
+    MySet.clipIntersection(new Point2D(e.x, e.y))
   }
-  
-  override def toString():String = "MySet " + name + ": " + loc
 }
 
 object MySet {
+  val r = 100
 
-  def apply(name: String, x: Double, y: Double, r: Double) = {
-    new MySet(name, Vec2(x, y), r)
+  val sets = Buffer[MySet]()
+  var selectedRegion: scalafx.scene.shape.Shape = new Circle()
+  val watcher = ObjectProperty(selectedRegion.boundsInParent)
+  selectedRegion.fill = Color.Red
+
+  def apply(): MySet = {
+    val shape = Circle(100, 100, r)
+    shape.fill = Color.rgb(0, 0, 0, 0.0)
+    shape.stroke = Color.Black
+    val set = new MySet(shape)
+    sets += set
+    set
+  }
+
+  def apply(cx: Double, cy: Double): MySet = {
+    val shape = Circle(cx, cy, r)
+    shape.fill = Color.rgb(0, 0, 0, 0.0)
+    shape.stroke = Color.Black
+    val set = new MySet(shape)
+    sets += set
+    set
+  }
+
+  def clipIntersection(loc: Point2D) {
+    val involved = sets.filter(_.shape.contains(loc))
+    val add = involved.foldLeft(involved(0).shape: scalafx.scene.shape.Shape)((r, e) => Shape.intersect(r, e.shape))
+    val shape = (sets -- involved).foldLeft(add)((r,e) => Shape.subtract(r, e.shape))
+    selectedRegion = shape
+    selectedRegion.fill = Color.Red
+    watcher() = selectedRegion.boundsInParent
+  }
+
+  def unselected() {
+    selectedRegion = new Circle()
+    watcher() = selectedRegion.boundsInParent
   }
 }
