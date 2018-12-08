@@ -11,14 +11,21 @@ import scalafx.scene.control.Label
 import scalafx.geometry.Pos
 
 class MySet(val shape: Shape, var name: String) {
+
   protected var prevMouseLoc = Vec2()
   protected var dragLock = false
+  protected var members = Set[String]()
+  protected var stroke = shape.stroke()
+  protected var fill = shape.fill()
 
   protected val nameLabel = new Label(name)
   nameLabel.textFill = Color.Black
 
   def selected() { shape.stroke = Color.Green }
-  def unselected() { shape.stroke = Color.Black }
+  def unselected() { shape.stroke = stroke }
+
+  def focused() { shape.stroke = Color.Green }
+  def unfocused() { shape.stroke = stroke }
 
   def content(): Buffer[Node] = Buffer(shape, nameLabel)
 }
@@ -39,9 +46,9 @@ object MySet {
   }
 
   var nextName = "A"
-  
+
   def getName(): String = {
-    while(sets.map(_.name).contains(nextName)) {
+    while (sets.map(_.name).contains(nextName)) {
       nextName = nextName.increment
     }
     val name = nextName
@@ -52,7 +59,7 @@ object MySet {
 
   var focusedSetIndex: Option[Int] = None
   val focusedSetWatcher = ObjectProperty(focusedSetIndex)
-  
+
   def createMenuShape(shape: scalafx.scene.shape.Shape): scalafx.scene.shape.Shape = {
     val ret = Shape.intersect(shape, shape)
     ret.fill <== shape.fill

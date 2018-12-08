@@ -1,6 +1,5 @@
 package app
 
-import scala.collection.mutable.Buffer
 
 import scalafx.Includes._
 import scalafx.animation.AnimationTimer
@@ -25,13 +24,13 @@ import scalafx.scene.control.TextField
 import scalafx.geometry.Point2D
 import scalafx.scene.control.Label
 import scalafx.scene.shape.Circle
+import scalafx.scene.text.Font
+import scalafx.scene.canvas.Canvas
+import scala.collection.mutable.Buffer
 
 object App extends JFXApp {
   val sceneWidth = 1200
   val sceneHeight = 800
-
-  MySet.registerMySet(MySetWhole())
-  MySet.focusedSetIndex = Some(0)
 
   /*
    *
@@ -39,47 +38,68 @@ object App extends JFXApp {
    *
    */
 
+  val messageLabel = new Label("")
+  val messageLabelBox = new HBox(0, messageLabel)
   val newSetButton = new Button("New Set")
   val controlsMenu = new HBox(25, newSetButton)
+  val bottomBox = new VBox(0, messageLabelBox, controlsMenu)
   var setMenuShape = MySet.createMenuShape(new Circle())
   val nameField = new TextField()
-  val errorLabel = new Label("")
-  val setMenu = new VBox(25, setMenuShape.delegate, nameField, errorLabel)
+  val setMenu = new VBox(25, setMenuShape.delegate, nameField)
   val deleteSetButton = new Button("Delete Set")
   val setMenuBorderPane = new BorderPane
   val borderPane = new BorderPane
 
-  controlsMenu.background = new Background(Array(new BackgroundFill(Color.LightGrey, null, null)))
-  controlsMenu.padding = Insets(25)
-  controlsMenu.border = new javafx.scene.layout.Border(new javafx.scene.layout.BorderStroke(
+  val padding = Insets(25)
+  val background = new Background(Array(new BackgroundFill(Color.LightGrey, null, null)))
+  val border = new javafx.scene.layout.Border(new javafx.scene.layout.BorderStroke(
     Color.BLACK,
     BorderStrokeStyle.Solid,
     CornerRadii.Empty,
     BorderWidths.Default))
 
-  nameField.text = MySet.sets(0).name
+  messageLabel.text = "Hello world!"
+  messageLabel.font = new Font(14)
+  messageLabel.wrapText = true
+
+  messageLabelBox.padding = padding
+  messageLabelBox.border = border
+  messageLabelBox.background = background
+
+  def errorMessage(str: String) {
+    messageLabel.textFill = Color.Red
+    messageLabel.text = str
+  }
+
+  def actionMessage(str: String) {
+    messageLabel.textFill = Color.Black
+    messageLabel.text = str
+  }
+
+  controlsMenu.background = background
+  controlsMenu.padding = padding
+
+  nameField.promptText = "set name"
   nameField.onAction = (e: ActionEvent) => {
     val str = nameField.text().trim
-    if (str.filterNot(_.isLetter).length > 0) {
-      errorLabel.text = "Set names can only contain letters."
-    } else if (str.filterNot(_.isUpper).length > 0) {
-      errorLabel.text = "Set names can only contain upper letters."
-    } else if (str.length > 10) {
-      errorLabel.text = "Set names can be no longer than 10 characters."
-    } else if (MySet.sets.map(_.name) == str) {
-      errorLabel.text = "Set name already in use."
-    } else {
+    if (str.filterNot(_.isLetter).length > 0) { errorMessage("Set names can only contain letters.") }
+    else if (str.filterNot(_.isUpper).length > 0) { errorMessage("Set names can only contain upper letters.") }
+    else if (str.length > 10) { errorMessage("Set names can be no longer than 10 characters.") }
+    else if (MySet.sets.map(_.name) == str) { errorMessage("Set name already in use.") }
+    else if (str.length == 0) { errorMessage("Set name must be at least one character.") }
+    else {
       MySet.focusedSetIndex match {
-        case Some(i) => MySet.sets(i).name = str
-        case None => errorLabel.text = "No set selected."
+        case Some(i) => {
+          val oldName = MySet.sets(i).name
+          MySet.sets(i).name = str
+          actionMessage("Renamed set " + oldName + " to " + str + ".")
+        }
+        case None => errorMessage("No set selected.")
       }
     }
   }
 
-  errorLabel.textFill = Color.Red
-  errorLabel.wrapText = true
-
-  setMenu.padding = Insets(25)
+  setMenu.padding = padding
 
   def setupSetMenu(shape: scalafx.scene.shape.Shape, name: String) {
     setMenuShape = MySet.createMenuShape(shape)
@@ -88,32 +108,29 @@ object App extends JFXApp {
   }
 
   setMenu.padding = Insets(25)
-  setupSetMenu(new Circle(), "")
+  setupSetMenu(MySetWhole.createEmpty().shape, "")
 
   deleteSetButton.maxWidth = Double.MaxValue
   deleteSetButton.onAction = (e: ActionEvent) => {
     MySet.focusedSetIndex match {
       case Some(i) => {
+        actionMessage("Deleted set " + MySet.sets(i).name + ".")
         MySet.deregisterMySet(MySet.sets(i))
         MySet.focusedSetIndex = None
       }
-      case None => errorLabel.text = "No set selected."
+      case None => errorMessage("No set selected.")
     }
   }
 
   setMenuBorderPane.prefWidth = 100
   setMenuBorderPane.top = setMenu
   setMenuBorderPane.bottom = deleteSetButton
-  setMenuBorderPane.background = new Background(Array(new BackgroundFill(Color.LightGrey, null, null)))
-  setMenuBorderPane.border = new javafx.scene.layout.Border(new javafx.scene.layout.BorderStroke(
-    Color.BLACK,
-    BorderStrokeStyle.Solid,
-    CornerRadii.Empty,
-    BorderWidths.Default))
+  setMenuBorderPane.background = background
+  setMenuBorderPane.border = border
 
-  borderPane.bottom = controlsMenu
+  borderPane.bottom = bottomBox
   borderPane.right = setMenuBorderPane
-
+  
   /*
    *
    * APP
@@ -134,14 +151,26 @@ object App extends JFXApp {
 
       MySet.focusedSetWatcher.onChange((source, oldValue, newValue) => {
         newValue match {
-          case Some(pos) => setupSetMenu(MySet.sets(pos).shape, MySet.sets(pos).name)
-          case None => setupSetMenu(new Circle(), "")
+          case Some(pos) => {
+            MySet.sets(pos).focused()
+            setupSetMenu(MySet.sets(pos).shape, MySet.sets(pos).name)
+            actionMessage("Selected set " + MySet.sets(pos).name + ".")
+          }
+          case None => {
+            setupSetMenu(MySetWhole.createEmpty().shape, "")
+            actionMessage("")
+          }
+        }
+        oldValue match {
+          case Some(pos) => MySet.sets(pos).unfocused()
+          case None =>
         }
       })
 
       newSetButton.onAction = (e: ActionEvent) => {
         val set = MySetWhole()
         MySet.registerMySet(set)
+        actionMessage("Created set " + set.name + ".")
       }
 
       /*

@@ -7,10 +7,12 @@ import scalafx.scene.input.MouseEvent
 import scalafx.scene.control.Label
 import scalafx.geometry.Pos
 
-class MySetWhole private (circle_ : Circle, name_ : String) extends MySet(circle_, name_) {
+class MySetWhole private (circle_ : Circle, name_ : String)
+  extends MySet(circle_, name_) {
+
   shape.onMousePressed = (e: MouseEvent) => {
     prevMouseLoc = Vec2(e.x, e.y)
-    selected()
+    //selected()
     dragLock = false
   }
 
@@ -25,7 +27,7 @@ class MySetWhole private (circle_ : Circle, name_ : String) extends MySet(circle
 
   shape.onMouseReleased = (e: MouseEvent) => {
     if (dragLock) {
-      unselected()
+      //unselected()
     } else {
       dragLock = false
     }
@@ -33,7 +35,7 @@ class MySetWhole private (circle_ : Circle, name_ : String) extends MySet(circle
 
   shape.onMouseClicked = (e: MouseEvent) => {
     if (!dragLock) {
-      unselected()
+      //unselected()
       val i = MySet.sets.indexOf(this)
       MySet.focusedSetIndex = Some(i)
       MySet.focusedSetWatcher() = Some(i)
@@ -49,6 +51,14 @@ object MySetWhole {
     val shape = Circle(100, 100, r)
     shape.fill = Color.rgb(0, 0, 0, 0.0)
     shape.stroke = Color.Black
+    val name = MySet.getName()
+    new MySetWhole(shape, name)
+  }
+
+  def createEmpty(): MySet = {
+    val shape = Circle(-1, -1, r)
+    shape.fill = Color.rgb(0, 0, 0, 0.0)
+    shape.stroke = Color.rgb(0, 0, 0, 0.0)
     val name = MySet.getName()
     new MySetWhole(shape, name)
   }
