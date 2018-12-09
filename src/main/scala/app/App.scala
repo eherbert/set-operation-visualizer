@@ -27,6 +27,8 @@ import scalafx.scene.shape.Circle
 import scalafx.scene.text.Font
 import scalafx.scene.canvas.Canvas
 import scala.collection.mutable.Buffer
+import scalafx.scene.control.TextArea
+import scalafx.scene.control.Tooltip
 
 object App extends JFXApp {
   val sceneWidth = 1200
@@ -40,12 +42,17 @@ object App extends JFXApp {
 
   val messageLabel = new Label("")
   val messageLabelBox = new HBox(0, messageLabel)
+  val newSetButtonTooltip = new Tooltip()
   val newSetButton = new Button("New Set")
   val controlsMenu = new HBox(25, newSetButton)
   val bottomBox = new VBox(0, messageLabelBox, controlsMenu)
   var setMenuShape = MySet.createMenuShape(new Circle())
+  val nameFieldTooltip = new Tooltip()
   val nameField = new TextField()
-  val setMenu = new VBox(25, setMenuShape.delegate, nameField)
+  val membersAreaTooltip = new Tooltip()
+  val membersArea = new TextArea()
+  val setMenu = new VBox(25, setMenuShape.delegate, nameField, membersArea)
+  val deleteSetButtonTooltip = new Tooltip()
   val deleteSetButton = new Button("Delete Set")
   val setMenuBorderPane = new BorderPane
   val borderPane = new BorderPane
@@ -58,7 +65,7 @@ object App extends JFXApp {
     CornerRadii.Empty,
     BorderWidths.Default))
 
-  messageLabel.text = "Hello world!"
+  messageLabel.text = "Hello world! Hover over buttons or fields to view tooltips."
   messageLabel.font = new Font(14)
   messageLabel.wrapText = true
 
@@ -76,10 +83,17 @@ object App extends JFXApp {
     messageLabel.text = str
   }
 
+  newSetButtonTooltip.text = "Add a new set to the work area."
+  
+  newSetButton.tooltip = newSetButtonTooltip
+  
   controlsMenu.background = background
   controlsMenu.padding = padding
 
-  nameField.promptText = "set name"
+  nameFieldTooltip.text = "Names can contain only upper letters.\nNames must be between one and 10 characters in length.\nNames should not be in use in the work area."
+  
+  nameField.promptText = "Set name."
+  nameField.tooltip = nameFieldTooltip
   nameField.onAction = (e: ActionEvent) => {
     val str = nameField.text().trim
     if (str.filterNot(_.isLetter).length > 0) { errorMessage("Set names can only contain letters.") }
@@ -98,6 +112,12 @@ object App extends JFXApp {
       }
     }
   }
+  
+  membersAreaTooltip.text = "Valid set formats include {1,2,3,4}, {{1,2},{3,4}}, and {(1,2),(3,4)}.\nSets cannot contain more than 100 members.\nSets can only be one additional nested set level or one pair level deep."
+  
+  membersArea.promptText = "Set members."
+  membersArea.tooltip = membersAreaTooltip
+  //membersArea.wrapText = true
 
   setMenu.padding = padding
 
@@ -110,13 +130,17 @@ object App extends JFXApp {
   setMenu.padding = Insets(25)
   setupSetMenu(MySetWhole.createEmpty().shape, "")
 
+  deleteSetButtonTooltip.text = "Delete a set from the work area."
+  
   deleteSetButton.maxWidth = Double.MaxValue
+  deleteSetButton.tooltip = deleteSetButtonTooltip
   deleteSetButton.onAction = (e: ActionEvent) => {
     MySet.focusedSetIndex match {
       case Some(i) => {
         actionMessage("Deleted set " + MySet.sets(i).name + ".")
+        // have to change focused set before deletion to avoid out of bounds error
+        MySet.changeFocusedSet(None)
         MySet.deregisterMySet(MySet.sets(i))
-        MySet.focusedSetIndex = None
       }
       case None => errorMessage("No set selected.")
     }
@@ -151,19 +175,15 @@ object App extends JFXApp {
 
       MySet.focusedSetWatcher.onChange((source, oldValue, newValue) => {
         newValue match {
+          // if new value is valid
           case Some(pos) => {
-            MySet.sets(pos).focused()
             setupSetMenu(MySet.sets(pos).shape, MySet.sets(pos).name)
             actionMessage("Selected set " + MySet.sets(pos).name + ".")
           }
+          // if new value is not valid
           case None => {
             setupSetMenu(MySetWhole.createEmpty().shape, "")
-            actionMessage("")
           }
-        }
-        oldValue match {
-          case Some(pos) => MySet.sets(pos).unfocused()
-          case None =>
         }
       })
 

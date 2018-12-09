@@ -36,9 +36,7 @@ class MySetWhole private (circle_ : Circle, name_ : String)
   shape.onMouseClicked = (e: MouseEvent) => {
     if (!dragLock) {
       //unselected()
-      val i = MySet.sets.indexOf(this)
-      MySet.focusedSetIndex = Some(i)
-      MySet.focusedSetWatcher() = Some(i)
+      MySet.changeFocusedSet(Some(MySet.sets.indexOf(this)))
     }
   }
 

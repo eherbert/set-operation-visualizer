@@ -59,6 +59,19 @@ object MySet {
 
   var focusedSetIndex: Option[Int] = None
   val focusedSetWatcher = ObjectProperty(focusedSetIndex)
+  
+  def changeFocusedSet(set:Option[Int]) {
+    focusedSetIndex match {
+      case Some(i) => sets(i).unfocused()
+      case None =>
+    }
+    focusedSetIndex = set
+    focusedSetWatcher() = set
+    focusedSetIndex match {
+      case Some(i) => sets(i).focused()
+      case None =>
+    }
+  }
 
   def createMenuShape(shape: scalafx.scene.shape.Shape): scalafx.scene.shape.Shape = {
     val ret = Shape.intersect(shape, shape)
