@@ -1,6 +1,5 @@
 package app
 
-
 import scalafx.Includes._
 import scalafx.animation.AnimationTimer
 import scalafx.application.JFXApp
@@ -44,16 +43,21 @@ object App extends JFXApp {
   val messageLabelBox = new HBox(0, messageLabel)
   val newSetButtonTooltip = new Tooltip()
   val newSetButton = new Button("New Set")
-  val controlsMenu = new HBox(25, newSetButton)
+  val selectNewSetButtonTooltip = new Tooltip()
+  val selectNewSetButton = new Button("Select New Set")
+  val controlsMenu = new HBox(25, newSetButton, selectNewSetButton)
   val bottomBox = new VBox(0, messageLabelBox, controlsMenu)
   var setMenuShape = MySet.createMenuShape(new Circle())
   val nameFieldTooltip = new Tooltip()
   val nameField = new TextField()
-  val membersAreaTooltip = new Tooltip()
-  val membersArea = new TextArea()
-  val setMenu = new VBox(25, setMenuShape.delegate, nameField, membersArea)
+  val membersFieldTooltip = new Tooltip()
+  val membersField = new TextField()
+  val setMenu = new VBox(25, setMenuShape.delegate, nameField, membersField)
+  val confirmSelectionButton = new Button("Confirm Selection")
+  val deleteSelectionButton = new Button("Delete Selection")
   val deleteSetButtonTooltip = new Tooltip()
   val deleteSetButton = new Button("Delete Set")
+  val buttonMenu = new VBox(0, confirmSelectionButton, deleteSelectionButton, deleteSetButton)
   val setMenuBorderPane = new BorderPane
   val borderPane = new BorderPane
 
@@ -84,14 +88,30 @@ object App extends JFXApp {
   }
 
   newSetButtonTooltip.text = "Add a new set to the work area."
-  
+
   newSetButton.tooltip = newSetButtonTooltip
-  
+  newSetButton.onAction = (e: ActionEvent) => {
+    val set = MySetWhole()
+    MySet.registerMySet(set)
+    actionMessage("Created set " + set.name + ".")
+  }
+
+  selectNewSetButtonTooltip.text = "Add a new set by selecting in the work area."
+
+  selectNewSetButton.tooltip = selectNewSetButtonTooltip
+  selectNewSetButton.onAction = (e: ActionEvent) => {
+    MySet.sets.foreach(_.setUserSelectionBehavior())
+    controlsMenu.disable = true
+    deleteSetButton.disable = true
+    confirmSelectionButton.disable = false
+    deleteSelectionButton.disable = false
+  }
+
   controlsMenu.background = background
   controlsMenu.padding = padding
 
   nameFieldTooltip.text = "Names can contain only upper letters.\nNames must be between one and 10 characters in length.\nNames should not be in use in the work area."
-  
+
   nameField.promptText = "Set name."
   nameField.tooltip = nameFieldTooltip
   nameField.onAction = (e: ActionEvent) => {
@@ -105,21 +125,19 @@ object App extends JFXApp {
       MySet.focusedSetIndex match {
         case Some(i) => {
           val oldName = MySet.sets(i).name
-          MySet.sets(i).name = str
+          MySet.sets(i).setName(str)
           actionMessage("Renamed set " + oldName + " to " + str + ".")
         }
         case None => errorMessage("No set selected.")
       }
     }
   }
-  
-  membersAreaTooltip.text = "Valid set formats include {1,2,3,4}, {{1,2},{3,4}}, and {(1,2),(3,4)}.\nSets cannot contain more than 100 members.\nSets can only be one additional nested set level or one pair level deep."
-  
-  membersArea.promptText = "Set members."
-  membersArea.tooltip = membersAreaTooltip
-  //membersArea.wrapText = true
 
-  setMenu.padding = padding
+  membersFieldTooltip.text = "Valid set formats include {1,2,3,4}, {{1,2},{3,4}}, and {(1,2),(3,4)}.\nSets cannot contain more than 100 members.\nSets can only be one additional nested set level or one pair level deep."
+
+  membersField.promptText = "Set members."
+  membersField.tooltip = membersFieldTooltip
+  //membersArea.wrapText = true
 
   def setupSetMenu(shape: scalafx.scene.shape.Shape, name: String) {
     setMenuShape = MySet.createMenuShape(shape)
@@ -127,11 +145,48 @@ object App extends JFXApp {
     nameField.text = name
   }
 
-  setMenu.padding = Insets(25)
+  setMenu.padding = padding
+  setMenu.minWidth = 150
   setupSetMenu(MySetWhole.createEmpty().shape, "")
 
+  confirmSelectionButton.maxWidth = Double.MaxValue
+  confirmSelectionButton.disable = true
+  confirmSelectionButton.onAction = (e: ActionEvent) => {
+    controlsMenu.disable = false
+    deleteSetButton.disable = false
+    confirmSelectionButton.disable = true
+    deleteSelectionButton.disable = true
+    MySet.selectionBuilder match {
+      case Some(sb) => {
+        MySet.deregisterMySet(sb)
+        val finalSet = MySetOrganic(sb.shape)
+        MySet.registerMySet(finalSet)
+        MySet.selectionBuilder = None
+      }
+      case None =>
+    }
+    MySet.sets.foreach(_.setDefaultBehavior())
+  }
+
+  deleteSelectionButton.maxWidth = Double.MaxValue
+  deleteSelectionButton.disable = true
+  deleteSelectionButton.onAction = (e: ActionEvent) => {
+    controlsMenu.disable = false
+    deleteSetButton.disable = false
+    confirmSelectionButton.disable = true
+    deleteSelectionButton.disable = true
+    MySet.selectionBuilder match {
+      case Some(sb) => {
+        MySet.deregisterMySet(sb)
+        MySet.selectionBuilder = None
+      }
+      case None =>
+    }
+    MySet.sets.foreach(_.setDefaultBehavior())
+  }
+
   deleteSetButtonTooltip.text = "Delete a set from the work area."
-  
+
   deleteSetButton.maxWidth = Double.MaxValue
   deleteSetButton.tooltip = deleteSetButtonTooltip
   deleteSetButton.onAction = (e: ActionEvent) => {
@@ -148,13 +203,13 @@ object App extends JFXApp {
 
   setMenuBorderPane.prefWidth = 100
   setMenuBorderPane.top = setMenu
-  setMenuBorderPane.bottom = deleteSetButton
+  setMenuBorderPane.bottom = buttonMenu
   setMenuBorderPane.background = background
   setMenuBorderPane.border = border
 
   borderPane.bottom = bottomBox
   borderPane.right = setMenuBorderPane
-  
+
   /*
    *
    * APP
@@ -186,25 +241,6 @@ object App extends JFXApp {
           }
         }
       })
-
-      newSetButton.onAction = (e: ActionEvent) => {
-        val set = MySetWhole()
-        MySet.registerMySet(set)
-        actionMessage("Created set " + set.name + ".")
-      }
-
-      /*
-      var lastTime = 0L
-      val timer: AnimationTimer = AnimationTimer(t => {
-        if (lastTime > 0) {
-          val delta = (t - lastTime) / 1e9
-
-        }
-        lastTime = t
-      })
-      timer.start()
-      *
-      */
     }
   }
 }

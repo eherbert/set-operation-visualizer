@@ -9,8 +9,9 @@ import scalafx.scene.Node
 import scalafx.beans.property.ObjectProperty
 import scalafx.scene.control.Label
 import scalafx.geometry.Pos
+import scalafx.scene.input.MouseEvent
 
-class MySet(val shape: Shape, var name: String) {
+abstract class MySet(var shape: Shape, var name: String, var elements: Buffer[Element]) {
 
   protected var prevMouseLoc = Vec2()
   protected var dragLock = false
@@ -28,6 +29,41 @@ class MySet(val shape: Shape, var name: String) {
   def unfocused() { shape.stroke = stroke }
 
   def content(): Buffer[Node] = Buffer(shape, nameLabel)
+
+  def setName(str: String) {
+    name = str
+  }
+
+  def setElements(str: String): Boolean = {
+    Element.fromString(str) match {
+      case Some(es) => {
+        elements = es
+        true
+      }
+      case None => false
+    }
+  }
+
+  def setDefaultBehavior(): Unit
+
+  def setUserSelectionBehavior() {
+    shape.onMousePressed = (e: MouseEvent) => {
+
+    }
+
+    shape.onMouseDragged = (e: MouseEvent) => {
+
+    }
+
+    shape.onMouseReleased = (e: MouseEvent) => {
+
+    }
+
+    shape.onMouseClicked = (e: MouseEvent) => {
+      MySet.clipIntersection(new Point2D(e.x, e.y))
+    }
+  }
+
 }
 
 object MySet {
@@ -35,6 +71,8 @@ object MySet {
 
   val sets = Buffer[MySet]()
   val contentWatcher = ObjectProperty(sets.flatMap(_.content()))
+  
+  val clearColor = Color.rgb(0, 0, 0, 0.0)
 
   def registerMySet(set: MySet) {
     sets += set
@@ -59,8 +97,8 @@ object MySet {
 
   var focusedSetIndex: Option[Int] = None
   val focusedSetWatcher = ObjectProperty(focusedSetIndex)
-  
-  def changeFocusedSet(set:Option[Int]) {
+
+  def changeFocusedSet(set: Option[Int]) {
     focusedSetIndex match {
       case Some(i) => sets(i).unfocused()
       case None =>
@@ -80,6 +118,28 @@ object MySet {
     ret
   }
 
+  var selectionBuilder: Option[MySetOrganic] = None
+  def clipIntersection(loc: Point2D) {
+    val involved = sets.filter(_.shape.contains(loc))
+    val add = involved.foldLeft(involved(0).shape: scalafx.scene.shape.Shape)((r, e) => Shape.intersect(r, e.shape))
+    val shape = (sets -- involved).foldLeft(add)((r, e) => Shape.subtract(r, e.shape))
+    selectionBuilder = selectionBuilder match {
+      case Some(sb) => {
+        deregisterMySet(sb)
+        val union = Shape.union(sb.shape, shape)
+        union.fill = Color.Red
+        sb.shape = union
+        registerMySet(sb)
+        Some(sb)
+      }
+      case None => {
+        val sb = MySetOrganic(shape)
+        sb.shape.fill = Color.Red
+        registerMySet(sb)
+        Some(sb)
+      }
+    }
+  }
 }
 
 /*
