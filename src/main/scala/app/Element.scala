@@ -4,38 +4,80 @@ import scala.collection.mutable.Buffer
 
 class Element
 
-class SUnit(x: String) extends Element {
+class EUnit(x: String) extends Element {
   override def toString(): String = {
-    "SUnit (" + x + ")"
+    x.toString()
+  }
+
+  def canEqual(a: Any) = a.isInstanceOf[EUnit]
+  override def equals(that: Any): Boolean = {
+    that match {
+      case that: EUnit => that.canEqual(this) && this.hashCode == that.hashCode
+      case _ => false
+    }
+  }
+  override def hashCode: Int = {
+    val prime = 31
+    var result = 1
+    result = prime * result + (if (x == null) 0 else x.hashCode)
+    return result
   }
 }
-class SPair(x: String, y: String) extends Element {
+class EPair(x: String, y: String) extends Element {
   override def toString(): String = {
-    "SPair (" + x + ", " + y + ")"
+    "(" + x + ", " + y + ")"
+  }
+
+  def canEqual(a: Any) = a.isInstanceOf[EPair]
+  override def equals(that: Any): Boolean = {
+    that match {
+      case that: EPair => that.canEqual(this) && this.hashCode == that.hashCode
+      case _ => false
+    }
+  }
+  override def hashCode: Int = {
+    val prime = 31
+    var result = 1
+    result = prime * result + (if (x == null) 0 else x.hashCode) + (if (y == null) 0 else y.hashCode)
+    return result
   }
 }
-class SSet(xs: Buffer[Element]) extends Element {
+class ESet(xs: Set[Element]) extends Element {
   override def toString(): String = {
-    "SSet {" + xs.map(_.toString()).mkString(", ") + "}"
+    "{" + xs.map(_.toString()).mkString(", ") + "}"
+  }
+
+  def canEqual(a: Any) = a.isInstanceOf[ESet]
+  override def equals(that: Any): Boolean = {
+    that match {
+      case that: ESet => that.canEqual(this) && this.hashCode == that.hashCode
+      case _ => false
+    }
+  }
+  override def hashCode: Int = {
+    val prime = 31
+    var result = 1
+    result = prime * result + xs.map(_.hashCode()).sum
+    return result
   }
 }
 
 object Element {
-  def empty(): Buffer[Element] = {
-    Buffer[Element]()
+  def empty(): ESet = {
+    new ESet(Set[Element]())
   }
 
-  def fromString(str: String): Option[Buffer[Element]] = {
+  def fromString(str: String): Option[ESet] = {
     try {
-      Some(str.trim
+      Some(new ESet(str.trim
         .drop(1)
         .dropRight(1)
         .trim
         .split(",")
-        .map(x => new SUnit(x.trim))
-        .toBuffer)
-    } catch  {
-      case _ : Throwable => None
+        .map(x => new EUnit(x.trim))
+        .toSet))
+    } catch {
+      case _: Throwable => None
     }
   }
 }

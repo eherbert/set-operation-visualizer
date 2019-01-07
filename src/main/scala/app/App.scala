@@ -50,9 +50,9 @@ object App extends JFXApp {
   var setMenuShape = MySet.createMenuShape(new Circle())
   val nameFieldTooltip = new Tooltip()
   val nameField = new TextField()
-  val membersFieldTooltip = new Tooltip()
-  val membersField = new TextField()
-  val setMenu = new VBox(25, setMenuShape.delegate, nameField, membersField)
+  val elementsFieldTooltip = new Tooltip()
+  val elementsField = new TextField()
+  val setMenu = new VBox(25, setMenuShape.delegate, nameField, elementsField)
   val confirmSelectionButton = new Button("Confirm Selection")
   val deleteSelectionButton = new Button("Delete Selection")
   val deleteSetButtonTooltip = new Tooltip()
@@ -103,6 +103,7 @@ object App extends JFXApp {
     MySet.sets.foreach(_.setUserSelectionBehavior())
     controlsMenu.disable = true
     deleteSetButton.disable = true
+    setMenu.disable = true
     confirmSelectionButton.disable = false
     deleteSelectionButton.disable = false
   }
@@ -133,27 +134,29 @@ object App extends JFXApp {
     }
   }
 
-  membersFieldTooltip.text = "Valid set formats include {1,2,3,4}, {{1,2},{3,4}}, and {(1,2),(3,4)}.\nSets cannot contain more than 100 members.\nSets can only be one additional nested set level or one pair level deep."
+  elementsFieldTooltip.text = "Valid set formats include {1,2,3,4}, {{1,2},{3,4}}, and {(1,2),(3,4)}.\nSets cannot contain more than 100 members.\nSets can only be one additional nested set level or one pair level deep."
 
-  membersField.promptText = "Set members."
-  membersField.tooltip = membersFieldTooltip
+  elementsField.promptText = "Set members."
+  elementsField.tooltip = elementsFieldTooltip
   //membersArea.wrapText = true
 
-  def setupSetMenu(shape: scalafx.scene.shape.Shape, name: String) {
-    setMenuShape = MySet.createMenuShape(shape)
+  def setupSetMenu(set: MySet) {
+    setMenuShape = MySet.createMenuShape(set.shape)
     setMenu.children(0) = setMenuShape
-    nameField.text = name
+    nameField.text = set.name
+    elementsField.text = set.elements.toString()
   }
 
   setMenu.padding = padding
   setMenu.minWidth = 150
-  setupSetMenu(MySetWhole.createEmpty().shape, "")
+  setupSetMenu(MySetWhole.createEmpty())
 
   confirmSelectionButton.maxWidth = Double.MaxValue
   confirmSelectionButton.disable = true
   confirmSelectionButton.onAction = (e: ActionEvent) => {
     controlsMenu.disable = false
     deleteSetButton.disable = false
+    setMenu.disable = false
     confirmSelectionButton.disable = true
     deleteSelectionButton.disable = true
     MySet.selectionBuilder match {
@@ -173,6 +176,7 @@ object App extends JFXApp {
   deleteSelectionButton.onAction = (e: ActionEvent) => {
     controlsMenu.disable = false
     deleteSetButton.disable = false
+    setMenu.disable = false
     confirmSelectionButton.disable = true
     deleteSelectionButton.disable = true
     MySet.selectionBuilder match {
@@ -232,12 +236,12 @@ object App extends JFXApp {
         newValue match {
           // if new value is valid
           case Some(pos) => {
-            setupSetMenu(MySet.sets(pos).shape, MySet.sets(pos).name)
+            setupSetMenu(MySet.sets(pos))
             actionMessage("Selected set " + MySet.sets(pos).name + ".")
           }
           // if new value is not valid
           case None => {
-            setupSetMenu(MySetWhole.createEmpty().shape, "")
+            setupSetMenu(MySetWhole.createEmpty())
           }
         }
       })
